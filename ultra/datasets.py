@@ -295,6 +295,14 @@ class TransductiveDataset(InMemoryDataset):
         test_results = self.load_file(train_files[2],
                         train_results["inv_entity_vocab"], train_results["inv_rel_vocab"])
         
+        
+        #####################################################NEW
+        #print("########## Read Data ######################")
+        # head and tails of the test nodes
+        #print(test_results["inv_entity_vocab"])
+        #print(test_results["inv_rel_vocab"])
+        #####################################################
+        
         # in some datasets, there are several new nodes in the test set, eg 123,143 YAGO train adn 123,182 in YAGO test
         # for consistency with other experimental results, we'll include those in the full vocab and num nodes
         num_node = test_results["num_node"] 
@@ -332,6 +340,20 @@ class TransductiveDataset(InMemoryDataset):
             test_data = self.pre_transform(test_data)
 
         torch.save((self.collate([train_data, valid_data, test_data])), self.processed_paths[0])
+        
+        ##################################################### NEW
+        # Save conversion dicts
+        path_dir  = "/app"
+        path_dir = os.path.join(path_dir, "Conversion")
+        n_file_conv = len(os.listdir(path_dir))
+        #print(f'n_file_conv: {n_file_conv}')
+        n_conv = n_file_conv + 1
+        torch.save({'node_conv' : test_results["inv_entity_vocab"], 
+                    'edge_type_conv': test_results["inv_rel_vocab"]},
+                   path_dir + "/conv_" + str(n_conv) + ".pt")
+        # Remove data in address below before run
+        #print(f'Saved data path: {self.processed_paths[0]}') 
+        ######################################################
 
     def __repr__(self):
         return "%s()" % (self.name)
@@ -469,6 +491,7 @@ class NELL995(TransductiveDataset):
             test_data = self.pre_transform(test_data)
 
         torch.save((self.collate([train_data, valid_data, test_data])), self.processed_paths[0])
+
 
 
 class ConceptNet100k(TransductiveDataset):
@@ -760,7 +783,7 @@ class NLIngram(IngramInductive):
         "https://raw.githubusercontent.com/bdi-lab/InGram/master/data/NL-%s/test.txt",
     ]
     name = "nl"
-
+    
 
 class ILPC2022(InductiveDataset):
 
@@ -1093,3 +1116,27 @@ class JointDataset(InMemoryDataset):
         # ]
 
         torch.save((train_data, valid_data, test_data), self.processed_paths[0])
+        
+        
+        
+######################################## New: Our own custom data
+       
+class CustomDataset(TransductiveDataset):
+    delimiter = ","
+
+    urls = [
+        'file:///app/Data/custom_graph_train_small.csv' ,
+        'file:///app/Data/custom_graph_val_small.csv' ,
+        'file:///app/Data/custom_graph_test_small.csv' ,
+        ]
+    name = "custom_data"
+    
+    
+
+
+
+
+
+
+                
+        
