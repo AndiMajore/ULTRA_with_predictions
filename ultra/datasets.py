@@ -1134,14 +1134,15 @@ class CustomDataset(TransductiveDataset):
 
 
 class EnvironmentDataset(TransductiveDataset):
+    import os
     delimiter = ","
-
+    print("Initializing dataset")
     urls = [
-        sys.environ["TRAIN_FILE"],
-        sys.environ["VALID_FILE"] ,
-        sys.environ["TEST_FILE"] ,
+        os.environ["TRAIN_FILE"],
+        os.environ["VALID_FILE"] ,
+        os.environ["TEST_FILE"] ,
         ]
-    name = sys.environ["DATASET_NAME"]
+    name = os.environ["DATASET_NAME"]
     
 
 

@@ -13,7 +13,7 @@ from torch.utils import data as torch_data
 from torch_geometric.data import Data
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-from ultra import tasks, util
+from ultra import tasks
 from ultra.models import Ultra
 
 
@@ -287,16 +287,78 @@ def test(cfg, model, test_data, device, logger, work_directory, filtered_data=No
 
     return mrr if not return_metrics else metrics
 
+def load_config(cfg_file, context=None):
+    import jinja2, easydict, yaml
+    with open(cfg_file, "r") as fin:
+        raw = fin.read()
+    template = jinja2.Template(raw)
+    instance = template.render(context)
+    cfg = yaml.safe_load(instance)
+    cfg = easydict.EasyDict(cfg)
+    return cfg
+
+def get_world_size():
+    if dist.is_initialized():
+        return dist.get_world_size()
+    if "WORLD_SIZE" in os.environ:
+        return int(os.environ["WORLD_SIZE"])
+    return 1
+
+def get_rank():
+    if dist.is_initialized():
+        return dist.get_rank()
+    if "RANK" in os.environ:
+        return int(os.environ["RANK"])
+    return 0
+
+def synchronize():
+    if get_world_size() > 1:
+        dist.barrier()
+
+
+def create_working_directory(cfg):
+    import time
+    file_name = "working_dir.tmp"
+    world_size = get_world_size()
+    if cfg.train.gpus is not None and len(cfg.train.gpus) != world_size:
+        error_msg = "World size is %d but found %d GPUs in the argument"
+        if world_size == 1:
+            error_msg += ". Did you launch with `python -m torch.distributed.launch`?"
+        raise ValueError(error_msg % (world_size, len(cfg.train.gpus)))
+    if world_size > 1 and not dist.is_initialized():
+        dist.init_process_group("nccl", init_method="env://")
+
+    working_dir = os.path.join(os.path.expanduser(cfg.output_dir),
+                               cfg.model["class"], cfg.dataset["class"], time.strftime("%Y-%m-%d-%H-%M-%S"))
+
+    # synchronize working directory
+    if get_rank() == 0:
+        with open(file_name, "w") as fout:
+            fout.write(working_dir)
+        os.makedirs(working_dir)
+    synchronize()
+    if get_rank() != 0:
+        with open(file_name, "r") as fin:
+            working_dir = fin.read()
+    synchronize()
+    if get_rank() == 0:
+        os.remove(file_name)
+
+    os.chdir(working_dir)
+    return working_dir
+
 
 def run(args, vars):
 
-    cfg = util.load_config(args.config, context=vars)
-    working_dir = util.create_working_directory(cfg)
-    sys.environ["WORKDIR"]= working_dir
-    sys.environ["TRAIN_FILE"]=cfg.get('train_file')
-    sys.environ["TEST_FILE"]=cfg.get('test_file')
-    sys.environ["VALID_FILE"]=cfg.get('valid_file')
-    sys.environ["DATASET_NAME"]=cfg.get('dataset_name')
+    cfg = load_config(args.config, context=vars)
+    working_dir = create_working_directory(cfg)
+    os.environ["WORKDIR"]= working_dir
+    os.environ["TRAIN_FILE"]=cfg.get('train_file')
+    os.environ["TEST_FILE"]=cfg.get('test_file')
+    os.environ["VALID_FILE"]=cfg.get('valid_file')
+    os.environ["DATASET_NAME"]=cfg.get('dataset_name')
+    print(os.environ['TRAIN_FILE'])    
+    from ultra import util
 
     torch.manual_seed(args.seed + util.get_rank())
 
@@ -374,10 +436,44 @@ def run(args, vars):
         logger.warning("Evaluate on test")
     test(cfg, model, test_data, working_dir, filtered_data=test_filtered_data, device=device, logger=logger)
 
+def detect_variables(cfg_file):
+    import jinja2
+    from jinja2 import meta
+    with open(cfg_file, "r") as fin:
+        raw = fin.read()
+    env = jinja2.Environment()
+    tree = env.parse(raw)
+    vars = meta.find_undeclared_variables(tree)
+    return vars
+
+def literal_eval(string):
+    import ast
+    try:
+        return ast.literal_eval(string)
+    except (ValueError, SyntaxError):
+        return string
+
+
+def parse_args():
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-c", "--config", help="yaml configuration file", required=True)
+    parser.add_argument("-s", "--seed", help="random seed for PyTorch", type=int, default=1024)
+
+    args, unparsed = parser.parse_known_args()
+    # get dynamic arguments defined in the config file
+    vars = detect_variables(args.config)
+    parser = argparse.ArgumentParser()
+    for var in vars:
+        parser.add_argument("--%s" % var, required=True)
+    vars = parser.parse_known_args(unparsed)[0]
+    vars = {k: literal_eval(v) for k, v in vars._get_kwargs()}
+
+    return args, vars
 
 
 if __name__ == "__main__":
-    args, vars = util.parse_args()
+    args, vars = parse_args()
     run(args, vars)
 
 
