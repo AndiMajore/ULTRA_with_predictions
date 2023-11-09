@@ -241,11 +241,11 @@ if __name__ == "__main__":
             if util.get_rank() == 0:
                 logger.warning(separator)
                 logger.warning("Evaluate on valid")
-            test(cfg, model, valid_data, filtered_data=val_filtered_data, device=device, logger=logger)
+            test(cfg, model, valid_data, working_dir, filtered_data=val_filtered_data, device=device, logger=logger)
             if util.get_rank() == 0:
                 logger.warning(separator)
                 logger.warning("Evaluate on test")
-            metrics = test(cfg, model, test_data, filtered_data=test_filtered_data, return_metrics=True, device=device, logger=logger)
+            metrics = test(cfg, model, test_data, working_dir, filtered_data=test_filtered_data, return_metrics=True, device=device, logger=logger)
 
             metrics = {k:v.item() for k,v in metrics.items()}
             metrics['dataset'] = graph
