@@ -126,6 +126,12 @@ def test(cfg, model, test_data, device, logger, filtered_data=None, return_metri
     sampler = torch_data.DistributedSampler(test_triplets, world_size, rank)
     test_loader = torch_data.DataLoader(test_triplets, cfg.train.batch_size, sampler=sampler)
 
+    ########################################################### New
+    tail_index = []
+    head_index = []
+    probability_tail = []
+    probability_head = []
+    #############################################
     model.eval()
     rankings = []
     num_negatives = []
@@ -134,11 +140,28 @@ def test(cfg, model, test_data, device, logger, filtered_data=None, return_metri
         t_batch, h_batch = tasks.all_negative(test_data, batch)
         t_pred = model(test_data, t_batch)
         h_pred = model(test_data, h_batch)
+        
+    
+        ########################################################### New
+        #print(f"tail: {t_pred}, head: {h_pred}")
+        t_prob = F.softmax(t_pred, dim = 1)
+        h_prob = F.softmax(h_pred, dim = 1)
+        
+        prob_tail, t_index = torch.max(t_prob,1)
+        prob_head, h_index = torch.max(h_prob,1)
+        
+        tail_index += [t_index]
+        head_index += [h_index]
+        
+        probability_tail += [prob_tail]
+        probability_head += [prob_head]
+        ###########################################
 
         if filtered_data is None:
             t_mask, h_mask = tasks.strict_negative_mask(test_data, batch)
         else:
             t_mask, h_mask = tasks.strict_negative_mask(filtered_data, batch)
+            
         pos_h_index, pos_t_index, pos_r_index = batch.t()
         t_ranking = tasks.compute_ranking(t_pred, pos_t_index, t_mask)
         h_ranking = tasks.compute_ranking(h_pred, pos_h_index, h_mask)
@@ -152,6 +175,49 @@ def test(cfg, model, test_data, device, logger, filtered_data=None, return_metri
         num_tail_negs += [num_t_negative]
 
     ranking = torch.cat(rankings)
+    
+    ########################################################### New
+    tail_index_cat = torch.cat(tail_index)
+    head_index_cat = torch.cat(head_index)
+    
+    # print(tail_index_cat)
+    # print(head_index_cat)
+    
+    probability_tail_cat = torch.cat(probability_tail)
+    probability_head_cat = torch.cat(probability_head)
+    
+    # print(probability_tail_cat)
+    # print(probability_head_cat)
+    
+    
+    path_dir_pred  = "/app"
+    path_dir_pred = os.path.join(path_dir_pred, "Prediction")
+    n_file_pred = len(os.listdir(path_dir_pred))
+    #print("###############################")
+
+    #print(os.listdir(path_dir_pred))
+    #print(f'n_file_pred: {n_file_pred}')
+    n_pred = n_file_pred + 1
+    
+    torch.save({'tail_index' : tail_index_cat, 
+                'head_index': head_index_cat},
+               path_dir_pred + "/pred_" + str(n_pred) + ".pt")
+    
+    
+    path_dir_prob  = "/app"
+    path_dir_prob = os.path.join(path_dir_prob, "Probability")
+    n_file_prob = len(os.listdir(path_dir_prob))
+    #print(f'n_file_prob: {n_file_prob}')
+
+    n_prob = n_file_prob + 1
+    
+    torch.save({'probability_tail' : probability_tail_cat, 
+                'probability_head': probability_head_cat},
+               path_dir_prob + "/prob_" + str(n_prob) + ".pt")
+    ###########################################################
+
+    # print(f"ranking: {rankings}")
+    
     num_negative = torch.cat(num_negatives)
     all_size = torch.zeros(world_size, dtype=torch.long, device=device)
     all_size[rank] = len(ranking)
@@ -246,11 +312,12 @@ if __name__ == "__main__":
     train_data = train_data.to(device)
     valid_data = valid_data.to(device)
     test_data = test_data.to(device)
-
+    
     model = Ultra(
         rel_model_cfg=cfg.model.relation_model,
         entity_model_cfg=cfg.model.entity_model,
     )
+        
 
     if "checkpoint" in cfg and cfg.checkpoint is not None:
         state = torch.load(cfg.checkpoint, map_location="cpu")
@@ -298,3 +365,10 @@ if __name__ == "__main__":
         logger.warning(separator)
         logger.warning("Evaluate on test")
     test(cfg, model, test_data, filtered_data=test_filtered_data, device=device, logger=logger)
+    
+    
+    
+    
+    
+    
+    
