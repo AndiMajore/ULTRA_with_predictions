@@ -1,4 +1,8 @@
-output_dir: ~/git/ULTRA/output
+output_dir: /tmp/ULTRA_OUTPUT/
+train_file: "train.csv"
+test_file: "test.csv"
+valid_file: "valid.csv"
+dataset_name: "nedrex_basic_graph_1699540896"
 
 dataset:
   class: {{ dataset }}

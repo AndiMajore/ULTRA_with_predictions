@@ -293,6 +293,10 @@ def run(args, vars):
     cfg = util.load_config(args.config, context=vars)
     working_dir = util.create_working_directory(cfg)
     sys.environ["WORKDIR"]= working_dir
+    sys.environ["TRAIN_FILE"]=cfg.get('train_file')
+    sys.environ["TEST_FILE"]=cfg.get('test_file')
+    sys.environ["VALID_FILE"]=cfg.get('valid_file')
+    sys.environ["DATASET_NAME"]=cfg.get('dataset_name')
 
     torch.manual_seed(args.seed + util.get_rank())
 

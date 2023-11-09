@@ -1131,7 +1131,17 @@ class CustomDataset(TransductiveDataset):
         'file:///app/Data/custom_graph_test_small.csv' ,
         ]
     name = "nedrex_data"
-    
+
+
+class EnvironmentDataset(TransductiveDataset):
+    delimiter = ","
+
+    urls = [
+        sys.environ["TRAIN_FILE"],
+        sys.environ["VALID_FILE"] ,
+        sys.environ["TEST_FILE"] ,
+        ]
+    name = sys.environ["DATASET_NAME"]
     
 
 
