@@ -343,8 +343,7 @@ class TransductiveDataset(InMemoryDataset):
         
         ##################################################### NEW
         # Save conversion dicts
-        import sys
-        working_directory = sys.environ["WORKDIR"]
+        working_directory = os.environ["WORKDIR"]
         # path_dir = os.path.join(path_dir, "Conversion")
         # n_file_conv = len(os.listdir(path_dir))
         #print(f'n_file_conv: {n_file_conv}')
