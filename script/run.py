@@ -434,7 +434,7 @@ def run(args, vars):
     if util.get_rank() == 0:
         logger.warning(separator)
         logger.warning("Evaluate on test")
-    test(cfg, model, test_data, working_dir, filtered_data=test_filtered_data, device=device, logger=logger)
+    test(cfg, model, test_data, work_directory=working_dir, filtered_data=test_filtered_data, device=device, logger=logger)
 
 def detect_variables(cfg_file):
     import jinja2
