@@ -343,14 +343,15 @@ class TransductiveDataset(InMemoryDataset):
         
         ##################################################### NEW
         # Save conversion dicts
-        working_directory = os.environ["WORKDIR"]
-        # path_dir = os.path.join(path_dir, "Conversion")
-        # n_file_conv = len(os.listdir(path_dir))
+        
+        root_path = "/app"
+        path_dir = os.path.join(root_path, "result/Conversion")
+        n_file_conv = len(os.listdir(path_dir))
         #print(f'n_file_conv: {n_file_conv}')
-        # n_conv = n_file_conv + 1
+        n_conv = n_file_conv + 1
         torch.save({'node_conv' : test_results["inv_entity_vocab"], 
                     'edge_type_conv': test_results["inv_rel_vocab"]},
-                   os.path.join(working_directory,"conv.pt"))
+                   path_dir + "/conv_" + str(n_conv) + ".pt")
         # Remove data in address below before run
         #print(f'Saved data path: {self.processed_paths[0]}') 
         ######################################################
@@ -1129,19 +1130,8 @@ class CustomDataset(TransductiveDataset):
         'file:///app/Data/custom_graph_val_small.csv' ,
         'file:///app/Data/custom_graph_test_small.csv' ,
         ]
-    name = "nedrex_data"
-
-
-class EnvironmentDataset(TransductiveDataset):
-    import os
-    delimiter = ","
-    print("Initializing dataset")
-    urls = [
-        f'file://{os.environ["TRAIN_FILE"]}',
-        f'file://{os.environ["VALID_FILE"]}' ,
-        f'file://{os.environ["TEST_FILE"]}' ,
-        ]
-    name = os.environ["DATASET_NAME"]
+    name = "custom_data"
+    
     
 
 
