@@ -1137,9 +1137,9 @@ class EnvironmentDataset(TransductiveDataset):
     delimiter = ","
     print("Initializing dataset")
     urls = [
-        f'file:///{os.environ["TRAIN_FILE"]}',
-        f'file:///{os.environ["VALID_FILE"]}' ,
-        f'file:///{os.environ["TEST_FILE"]}' ,
+        f'file://{os.environ["TRAIN_FILE"]}',
+        f'file://{os.environ["VALID_FILE"]}' ,
+        f'file://{os.environ["TEST_FILE"]}' ,
         ]
     name = os.environ["DATASET_NAME"]
     
