@@ -122,7 +122,7 @@ def create_working_directory(cfg):
         dist.init_process_group("nccl", init_method="env://")
 
     working_dir = os.path.join(os.path.expanduser(cfg.output_dir),
-                               cfg.model["class"], cfg.dataset["class"], time.strftime("%Y-%m-%d-%H-%M-%S"))
+                               cfg.model["class"], cfg.dataset["class"], cfg.get('dataset_name',time.strftime("%Y-%m-%d-%H-%M-%S")))
 
     # synchronize working directory
     if get_rank() == 0:
