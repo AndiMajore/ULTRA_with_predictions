@@ -25,8 +25,8 @@ def train_and_validate(cfg, model, train_data, valid_data, device, logger, filte
     if cfg.train.num_epoch == 0:
         return
 
-    world_size = util.get_world_size()
-    rank = util.get_rank()
+    world_size = get_world_size()
+    rank = get_rank()
 
     train_triplets = torch.cat([train_data.target_edge_index, train_data.target_edge_type.unsqueeze(0)]).t()
     sampler = torch_data.DistributedSampler(train_triplets, world_size, rank)
@@ -53,7 +53,7 @@ def train_and_validate(cfg, model, train_data, valid_data, device, logger, filte
     for i in range(0, cfg.train.num_epoch, step):
         parallel_model.train()
         for epoch in range(i, min(cfg.train.num_epoch, i + step)):
-            if util.get_rank() == 0:
+            if get_rank() == 0:
                 logger.warning(separator)
                 logger.warning("Epoch %d begin" % epoch)
 
@@ -79,13 +79,13 @@ def train_and_validate(cfg, model, train_data, valid_data, device, logger, filte
                 optimizer.step()
                 optimizer.zero_grad()
 
-                if util.get_rank() == 0 and batch_id % cfg.train.log_interval == 0:
+                if get_rank() == 0 and batch_id % cfg.train.log_interval == 0:
                     logger.warning(separator)
                     logger.warning("binary cross entropy: %g" % loss)
                 losses.append(loss.item())
                 batch_id += 1
 
-            if util.get_rank() == 0:
+            if get_rank() == 0:
                 avg_loss = sum(losses) / len(losses)
                 logger.warning(separator)
                 logger.warning("Epoch %d end" % epoch)
@@ -100,7 +100,7 @@ def train_and_validate(cfg, model, train_data, valid_data, device, logger, filte
                 "optimizer": optimizer.state_dict()
             }
             torch.save(state, "model_epoch_%d.pth" % epoch)
-        util.synchronize()
+        synchronize()
 
         if rank == 0:
             logger.warning(separator)
@@ -114,7 +114,7 @@ def train_and_validate(cfg, model, train_data, valid_data, device, logger, filte
         logger.warning("Load checkpoint from model_epoch_%d.pth" % best_epoch)
     state = torch.load("model_epoch_%d.pth" % best_epoch, map_location=device)
     model.load_state_dict(state["model"])
-    util.synchronize()
+    synchronize()
 
 
 @torch.no_grad()
